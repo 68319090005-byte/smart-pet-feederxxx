@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Pet Feeder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f4f7f6; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+        .feed-btn { 
+            width: 100%; height: 80px; border-radius: 20px; font-size: 22px; 
+            background: linear-gradient(45deg, #ff9966, #ff5e62); border: none; color: white;
+            box-shadow: 0 4px 15px rgba(255, 94, 98, 0.4);
+        }
+        .feed-btn:active { transform: scale(0.98); }
+        .status-icon { font-size: 40px; margin-bottom: 10px; }
+        
+        /* สีของตัวเลข */
+        .temp-text { color: #ff5e62; font-weight: bold; font-size: 2rem; }
+        .hum-text { color: #56ccf2; font-weight: bold; font-size: 2rem; }
+        .light-text { color: #ffc107; font-weight: bold; font-size: 2rem; } /* สีเหลืองสำหรับแสง */
+
+        .header-bg { background-color: #333; color: white; padding: 20px 0; border-radius: 0 0 20px 20px; margin-bottom: 20px; }
+        
+        .time-input {
+            font-size: 1.5rem;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 5px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid header-bg text-center">
+        <h1><i class="fas fa-paw"></i> เครื่องให้อาหารสัตว์อัจฉริยะ</h1>
+        <p id="connection-status"><span class="badge bg-warning">กำลังเชื่อมต่อ...</span></p>
+    </div>
+
+    <div class="container">
+        <div class="row g-3 mb-4 justify-content-center">
+            
+            <div class="col-6 col-md-2">
+                <div class="card p-3 text-center h-100">
+                    <i class="fas fa-temperature-high status-icon text-danger"></i>
+                    <h6>อุณหภูมิ</h6>
+                    <div id="temp-val" class="temp-text">-- °C</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-2">
+                <div class="card p-3 text-center h-100">
+                    <i class="fas fa-tint status-icon text-info"></i>
+                    <h6>ความชื้น</h6>
+                    <div id="hum-val" class="hum-text">-- %</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-2">
+                <div class="card p-3 text-center h-100">
+                    <i class="fas fa-sun status-icon text-warning"></i>
+                    <h6>แสงสว่าง</h6>
+                    <div id="light-val" class="light-text">--</div>
+                    <small class="text-muted">(0-1024)</small>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3">
+                <div class="card p-3 text-center h-100">
+                    <i class="fas fa-clock status-icon text-secondary"></i>
+                    <h6>เวลาเครื่อง</h6>
+                    <div id="device-time" class="h4 mt-2">--:--</div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <div class="card p-3 text-center h-100">
+                    <i class="fas fa-robot status-icon text-success"></i>
+                    <h6>สถานะ</h6>
+                    <div id="feed-status" class="h5 mt-2 text-muted">รอข้อมูล...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-4">
+            <h5 class="text-center"><i class="fas fa-calendar-check"></i> ตั้งเวลาให้อาหารอัตโนมัติ</h5>
+            <hr>
+            <div class="row text-center">
+                <div class="col-6">
+                    <label>เวลาที่ 1</label>
+                    <input type="time" id="time1_input" class="time-input">
+                </div>
+                <div class="col-6">
+                    <label>เวลาที่ 2</label>
+                    <input type="time" id="time2_input" class="time-input">
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <button onclick="saveSettings()" class="btn btn-success px-4 py-2">
+                    <i class="fas fa-save"></i> บันทึกเวลา
+                </button>
+                <p id="save_status" class="mt-2 text-muted small"></p>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <button id="btn-feed" class="feed-btn" onclick="feedNow()">
+                    <i class="fas fa-bone"></i> ให้อาหารเดี๋ยวนี้ (10 วินาที)
+                </button>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-5">
+            <h5><i class="fas fa-history"></i> ข้อมูลล่าสุด</h5>
+            <hr>
+            <p>ให้อาหารครั้งล่าสุดเมื่อ: <strong id="last-fed-time" class="text-primary">--/-- --:--</strong></p>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        // ==========================================
+        // ตั้งค่า Firebase Config
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmyktEc3KUGZh8RRAlFPSJ6163m83Luo4",
+            authDomain: "smart-pet-feeder-ba97d.firebaseapp.com",
+            databaseURL: "https://smart-pet-feeder-ba97d-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "smart-pet-feeder-ba97d",
+            storageBucket: "smart-pet-feeder-ba97d.firebasestorage.app",
+            messagingSenderId: "837981013596",
+            appId: "1:837981013596:web:edccf602436df5acfc8899",
+            measurementId: "G-GKXQYC076R"
+        };
+
+        // เริ่มต้น Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 1. อ่านค่า Sensor และสถานะ (Real-time)
+        db.ref('sensor').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                // แสดงอุณหภูมิและความชื้น
+                document.getElementById('temp-val').innerText = (data.temperature || '--') + ' °C';
+                document.getElementById('hum-val').innerText = (data.humidity || '--') + ' %';
+                
+                // >>> ส่วนที่เพิ่ม: แสดงค่าแสง (Light) <<<
+                // ถ้ามีค่า data.light ให้แสดง ถ้าไม่มีให้ขีด --
+                let lightShow = '--';
+                if(data.light !== undefined) {
+                    lightShow = data.light;
+                }
+                document.getElementById('light-val').innerText = lightShow;
+            }
+        });
+
+        db.ref('status').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                document.getElementById('device-time').innerText = data.last_update || '--:--';
+                document.getElementById('last-fed-time').innerText = data.last_fed_time || 'ยังไม่มีข้อมูล';
+                
+                const statusText = data.feed_status || 'Ready';
+                const statusEl = document.getElementById('feed-status');
+                statusEl.innerText = statusText;
+                
+                // เปลี่ยนสีปุ่มตามสถานะ
+                const btn = document.getElementById('btn-feed');
+                if(statusText === 'Feeding...') {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังให้อาหาร...';
+                    btn.style.background = '#ccc';
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-bone"></i> ให้อาหารเดี๋ยวนี้ (10 วินาที)';
+                    btn.style.background = 'linear-gradient(45deg, #ff9966, #ff5e62)';
+                }
+            }
+            // เชื่อมต่อสำเร็จ
+            document.getElementById('connection-status').innerHTML = '<span class="badge bg-success">ออนไลน์</span>';
+        });
+
+        // ==========================================
+        // ส่วนเดิม: ระบบตั้งเวลา
+        // ==========================================
+        db.ref('config').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById("time1_input").value = data.time1 || "07:00";
+                document.getElementById("time2_input").value = data.time2 || "18:00";
+            }
+        });
+
+        function saveSettings() {
+            const t1 = document.getElementById("time1_input").value;
+            const t2 = document.getElementById("time2_input").value;
+
+            db.ref('config').set({
+                time1: t1,
+                time2: t2
+            }).then(() => {
+                const now = new Date();
+                const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+                document.getElementById("save_status").innerText = "บันทึกสำเร็จเมื่อ " + timeStr + " น.";
+                document.getElementById("save_status").className = "mt-2 text-success small";
+                alert("บันทึกเวลาเรียบร้อยแล้ว!");
+            }).catch((error) => {
+                alert("เกิดข้อผิดพลาด: " + error.message);
+            });
+        }
+
+        function feedNow() {
+            if(confirm('ต้องการให้อาหารสัตว์เลี้ยงเดี๋ยวนี้ใช่ไหม?')) {
+                db.ref('control/feed_now').set(true);
+            }
+        }
+    </script>
+</body>
+</html>
